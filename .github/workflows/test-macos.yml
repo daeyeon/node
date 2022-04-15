@@ -59,6 +59,6 @@ jobs:
       - name: tools/doc/node_modules workaround
         run: make tools/doc/node_modules
       - name: Build
-        run: make build-ci -j2 V=1 CONFIG_FLAGS="--error-on-warn"
+        run: make build-ci -j$(nproc) V=1 CONFIG_FLAGS="--error-on-warn"
       - name: Test
-        run: make run-ci -j2 V=1 TEST_CI_ARGS="-p actions"
+        run: make run-ci -j$(nproc) V=1 TEST_CI_ARGS="-p actions"
