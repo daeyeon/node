@@ -12,7 +12,7 @@ on:
       - '!.github/workflows/test-macos.yml'
   push:
     branches:
-      - ci
+      # - ci
       - ongoing
       - master.**
       - master

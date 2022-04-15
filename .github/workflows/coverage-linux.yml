@@ -11,7 +11,7 @@ on:
       - .github/**
       - '!.github/workflows/coverage-linux.yml'
   push:
-    branches: [ci, ongoing, master.**, master, main]
+    branches: [master, main]
     paths-ignore:
       - '**.md'
       - benchmark/**
