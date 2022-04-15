@@ -9,6 +9,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
+      - ci
+      - ongoing
+      - master.**
       - master
       - main
       - canary
