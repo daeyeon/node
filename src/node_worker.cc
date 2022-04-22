@@ -108,9 +108,13 @@ void Worker::UpdateResourceConstraints(ResourceConstraints* constraints) {
   }
 
   if (resource_limits_[kMaxOldGenerationSizeMb] > 0) {
+    printf("1. %f\n",resource_limits_[kMaxOldGenerationSizeMb]);
+    printf("2. %f\n",resource_limits_[kMaxOldGenerationSizeMb]* kMB);
     constraints->set_max_old_generation_size_in_bytes(
         static_cast<size_t>(resource_limits_[kMaxOldGenerationSizeMb] * kMB));
   } else {
+    printf("3. %zu\n",constraints->max_old_generation_size_in_bytes());
+    printf("4. %f\n",constraints->max_old_generation_size_in_bytes() / kMB);
     resource_limits_[kMaxOldGenerationSizeMb] =
         constraints->max_old_generation_size_in_bytes() / kMB;
   }

@@ -5201,9 +5201,11 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints) {
     if (constraints.max_old_generation_size_in_bytes() > 0) {
       max_old_generation_size = constraints.max_old_generation_size_in_bytes();
     }
+    printf("a. %zu\n", max_old_generation_size);
     if (FLAG_max_old_space_size > 0) {
       max_old_generation_size =
           static_cast<size_t>(FLAG_max_old_space_size) * MB;
+      printf("b. %zu\n", max_old_generation_size);
     } else if (FLAG_max_heap_size > 0) {
       size_t max_heap_size = static_cast<size_t>(FLAG_max_heap_size) * MB;
       size_t young_generation_size =
@@ -5211,16 +5213,23 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints) {
       max_old_generation_size = max_heap_size > young_generation_size
                                     ? max_heap_size - young_generation_size
                                     : 0;
+      printf("c. %zu\n", max_old_generation_size);
     }
     max_old_generation_size =
         std::max(max_old_generation_size, MinOldGenerationSize());
+
+    printf("d. %zu\n", max_old_generation_size);
     max_old_generation_size = std::min(max_old_generation_size,
                                        AllocatorLimitOnMaxOldGenerationSize());
+    printf("e. %zu\n", max_old_generation_size);
     max_old_generation_size =
         RoundDown<Page::kPageSize>(max_old_generation_size);
 
+    printf("f. %zu\n", max_old_generation_size);
     max_global_memory_size_ =
         GlobalMemorySizeFromV8Size(max_old_generation_size);
+
+    printf("g. %zu\n", max_old_generation_size);
     set_max_old_generation_size(max_old_generation_size);
   }
 
