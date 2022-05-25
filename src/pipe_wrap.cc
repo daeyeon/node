@@ -55,7 +55,7 @@ MaybeLocal<Object> PipeWrap::Instantiate(Environment* env,
   Local<Function> constructor = env->pipe_constructor_template()
                                     ->GetFunction(env->context())
                                     .ToLocalChecked();
-  CHECK_EQ(false, constructor.IsEmpty());
+
   Local<Value> type_value = Int32::New(env->isolate(), type);
   return handle_scope.EscapeMaybe(
       constructor->NewInstance(env->context(), 1, &type_value));

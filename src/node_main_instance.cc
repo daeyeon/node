@@ -188,7 +188,6 @@ NodeMainInstance::CreateMainEnvironment(int* exit_code) {
                                     {DeserializeNodeInternalFields, env.get()})
                   .ToLocalChecked();
 
-    CHECK(!context.IsEmpty());
     Context::Scope context_scope(context);
 
     CHECK(InitializeContextRuntime(context).IsJust());

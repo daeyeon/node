@@ -61,7 +61,6 @@ MaybeLocal<Object> TCPWrap::Instantiate(Environment* env,
   Local<Function> constructor = env->tcp_constructor_template()
                                     ->GetFunction(env->context())
                                     .ToLocalChecked();
-  CHECK_EQ(constructor.IsEmpty(), false);
   Local<Value> type_value = Int32::New(env->isolate(), type);
   return handle_scope.EscapeMaybe(
       constructor->NewInstance(env->context(), 1, &type_value));
