@@ -1,0 +1,28 @@
+# This is a comment
+# cspell lint --show-suggestions -u test/*
+
+!forbiddenword
+Embedder
+embedder
+dnsopts
+webidl
+
+onwrite
+ontick
+onread+
+ongc
+
+getsockname
+testharness
+joyeecheung
+
+arraystream
+
+INET
+localhosts
+nname
+nread
+testpy
+
+primordials
+

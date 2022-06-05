@@ -1,0 +1,21 @@
+{
+    "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+    "version": "0.2",
+    "dictionaryDefinitions": [
+        {
+            "name": "node-dev",
+            "path": "./cspell-node-dev-words.txt",
+            "addWords": true
+        }
+    ],
+    "dictionaries": [
+    	"node-dev",
+        "node",
+        "npm"
+    ],
+    "ignorePaths": [
+        "node_modules",
+        "**/parallel",
+        "**/sequential"
+    ]
+}

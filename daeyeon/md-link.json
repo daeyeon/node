@@ -1,0 +1,16 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^https://github.com/nodejs-private" },
+    { "pattern": "^https://ci.nodejs.org" },
+    { "pattern": "^https://ci-release.nodejs.org" },
+    { "pattern": "^https://help.github.com" },
+    { "pattern": "^https://scan9.coverity.com" },
+    { "pattern": "^https://mm.icann.org/pipermail/tz-announce" }
+  ],
+  "replacementPatterns": [],
+  "httpHeaders": [],
+  "timeout": "5s",
+  "retryCount": 0,
+  "fallbackRetryDelay": "5s",
+  "aliveStatusCodes": [200, 403, 0]
+}
