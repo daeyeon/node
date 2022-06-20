@@ -390,6 +390,18 @@ added: v18.0.0
 
 A browser-compatible implementation of [`DecompressionStream`][].
 
+## `CustomEvent`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+> Stability: 1 - Experimental.
+
+<!-- type=global -->
+
+A browser-compatible implementation of the [`CustomEvent` Web API][].
+
 ## `Event`
 
 <!-- YAML
@@ -854,6 +866,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`ByteLengthQueuingStrategy`]: webstreams.md#class-bytelengthqueuingstrategy
 [`CompressionStream`]: webstreams.md#class-compressionstream
 [`CountQueuingStrategy`]: webstreams.md#class-countqueuingstrategy
+[`CustomEvent` Web API]: https://dom.spec.whatwg.org/#customevent
 [`DOMException`]: https://developer.mozilla.org/en-US/docs/Web/API/DOMException
 [`DecompressionStream`]: webstreams.md#class-decompressionstream
 [`EventTarget` and `Event` API]: events.md#eventtarget-and-event-api

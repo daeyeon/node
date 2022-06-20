@@ -323,6 +323,7 @@ module.exports = {
     CountQueuingStrategy: 'readable',
     Crypto: 'readable',
     CryptoKey: 'readable',
+    CustomEvent: 'readable',
     DecompressionStream: 'readable',
     fetch: 'readable',
     FormData: 'readable',
