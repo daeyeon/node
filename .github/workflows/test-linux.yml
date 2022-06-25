@@ -9,6 +9,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
+      - ci**
+      - ongoing
+      - main.**
       - main
       - canary
       - v[0-9]+.x-staging
@@ -41,9 +44,17 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Environment Information
-        run: npx envinfo
+      # - name: Environment Information
+      #   run: npx envinfo
+      # - name: Build
+      #   run: make build-ci -j$(nproc) V=1 CONFIG_FLAGS="--error-on-warn"
+      # - name: Test
+      #   run: make run-ci -j$(nproc) V=1 TEST_CI_ARGS="-p actions"
+      - name: Set up Ninja build
+        run: sudo apt install -y ninja-build
       - name: Build
-        run: make build-ci -j2 V=1 CONFIG_FLAGS="--error-on-warn"
+        run: |
+          ./configure --error-on-warn --ninja
+          ninja -v -C out/Release node
       - name: Test
-        run: make run-ci -j2 V=1 TEST_CI_ARGS="-p actions"
+        run: make test-ci -j1 V=1 TEST_CI_ARGS="-p actions"
