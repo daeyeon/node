@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+ARGS=$@
+
+export NODE_DEBUG=*
+export NODE_DEBUG_NATIVE=*
+
+./node_g $ARGS
