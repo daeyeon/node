@@ -1724,6 +1724,31 @@ deprecated and will change in a future release to align `EventTarget` with
 other Node.js APIs. Any code relying on the `process.on('error')` event should
 be aligned with the new behavior.
 
+### Class: `CustomEvent`
+
+<!-- YAML
+added: v18.7.0
+-->
+
+> Stability: 1 - Experimental.
+
+* Extends: {Event}
+
+The `CustomEvent` object is an adaptation of the [`CustomEvent` Web API][].
+Instances are created internally by Node.js.
+
+#### `event.detail`
+
+<!-- YAML
+added: v18.7.0
+-->
+
+> Stability: 1 - Experimental.
+
+* Type: {any} Returns custom data passed when initializing.
+
+Read-only.
+
 ### Class: `Event`
 
 <!-- YAML
@@ -1986,31 +2011,6 @@ added: v14.5.0
   * `capture` {boolean}
 
 Removes the `listener` from the list of handlers for event `type`.
-
-### Class: `CustomEvent`
-
-<!-- YAML
-added: v18.7.0
--->
-
-> Stability: 1 - Experimental.
-
-* Extends: {Event}
-
-The `CustomEvent` object is an adaptation of the [`CustomEvent` Web API][].
-Instances are created internally by Node.js.
-
-#### `event.detail`
-
-<!-- YAML
-added: v18.7.0
--->
-
-> Stability: 1 - Experimental.
-
-* Type: {any} Returns custom data passed when initializing.
-
-Read-only.
 
 ### Class: `NodeEventTarget`
 
