@@ -251,7 +251,6 @@ async_test(t => {
    'different length (in the readable state)');
 
 async_test(t => {
-  // Tests https://github.com/nodejs/node/issues/41886
   const stream = new ReadableStream({
     pull: t.step_func_done(c => {
       const view = new Uint8Array(new ArrayBuffer(11), 0, 3);
