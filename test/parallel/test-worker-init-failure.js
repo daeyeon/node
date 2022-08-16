@@ -34,9 +34,15 @@ if (process.argv[2] === 'child') {
     });
 
     // We want to test that if there is an error in a constrained running
-    // environment, it will be one of `ENFILE`, `EMFILE`, 'ENOENT', or
+    // environment, it will be one of `ENFILE`, `EMFILE`, 'ENOENT', 'ENOTSUP' or
     // `ERR_WORKER_INIT_FAILED`.
-    const expected = ['ERR_WORKER_INIT_FAILED', 'EMFILE', 'ENFILE', 'ENOENT'];
+    const expected = [
+      'ERR_WORKER_INIT_FAILED',
+      'EMFILE',
+      'ENFILE',
+      'ENOENT',
+      'ENOTSUP',
+    ];
 
     // `common.mustCall*` cannot be used here as in some environments
     // (i.e. single cpu) `ulimit` may not lead to such an error.
