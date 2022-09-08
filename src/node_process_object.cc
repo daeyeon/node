@@ -73,6 +73,25 @@ static void DebugPortSetter(Local<Name> property,
   host_port->set_port(static_cast<int>(port));
 }
 
+static void ExitCodeGetter(Local<Name> property,
+                           const PropertyCallbackInfo<Value>& info) {
+  Environment* env = Environment::GetCurrent(info);
+  std::optional<int32_t> maybe_code = env->exit_code();
+  if (maybe_code) {
+    info.GetReturnValue().Set(*maybe_code);
+  }
+}
+
+static void ExitCodeSetter(Local<Name> property,
+                           Local<Value> value,
+                           const PropertyCallbackInfo<void>& info) {
+  Environment* env = Environment::GetCurrent(info);
+  if (value->IsUndefined()) {
+    return env->set_exit_code(std::nullopt);
+  }
+  env->set_exit_code(value->Int32Value(env->context()).FromMaybe(0));
+}
+
 static void GetParentProcessId(Local<Name> property,
                                const PropertyCallbackInfo<Value>& info) {
   info.GetReturnValue().Set(uv_os_getppid());
@@ -216,6 +235,15 @@ void PatchProcessObject(const FunctionCallbackInfo<Value>& args) {
                           env->owns_process_state() ? DebugPortSetter : nullptr,
                           Local<Value>())
             .FromJust());
+
+  // process.exitCode
+  CHECK(process
+            ->SetAccessor(context,
+                          FIXED_ONE_BYTE_STRING(isolate, "exitCode"),
+                          ExitCodeGetter,
+                          ExitCodeSetter,
+                          Local<Value>())
+            .FromJust());
 }
 
 void RegisterProcessExternalReferences(ExternalReferenceRegistry* registry) {
@@ -223,6 +251,8 @@ void RegisterProcessExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetParentProcessId);
   registry->Register(DebugPortSetter);
   registry->Register(DebugPortGetter);
+  registry->Register(ExitCodeSetter);
+  registry->Register(ExitCodeGetter);
   registry->Register(ProcessTitleSetter);
   registry->Register(ProcessTitleGetter);
 }

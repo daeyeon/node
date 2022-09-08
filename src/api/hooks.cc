@@ -36,19 +36,10 @@ Maybe<bool> EmitProcessBeforeExit(Environment* env) {
   if (!env->destroy_async_id_list()->empty())
     AsyncWrap::DestroyAsyncIdsCallback(env);
 
-  HandleScope handle_scope(env->isolate());
-  Local<Context> context = env->context();
-  Context::Scope context_scope(context);
-
-  Local<Value> exit_code_v;
-  if (!env->process_object()->Get(context, env->exit_code_string())
-      .ToLocal(&exit_code_v)) return Nothing<bool>();
-
-  Local<Integer> exit_code;
-  if (!exit_code_v->ToInteger(context).ToLocal(&exit_code)) {
-    return Nothing<bool>();
-  }
-
+  Isolate* isolate = env->isolate();
+  HandleScope handle_scope(isolate);
+  Local<Integer> exit_code =
+      v8::Integer::New(isolate, env->exit_code().value_or(0));
   return ProcessEmit(env, "beforeExit", exit_code).IsEmpty() ?
       Nothing<bool>() : Just(true);
 }
@@ -61,29 +52,18 @@ Maybe<int> EmitProcessExit(Environment* env) {
   // process.emit('exit')
   Isolate* isolate = env->isolate();
   HandleScope handle_scope(isolate);
-  Local<Context> context = env->context();
-  Context::Scope context_scope(context);
-  Local<Object> process_object = env->process_object();
 
-  // TODO(addaleax): It might be nice to share process.exitCode via
-  // getter/setter pairs that pass data directly to the native side, so that we
-  // don't manually have to read and write JS properties here. These getters
-  // could use e.g. a typed array for performance.
   env->set_exiting(true);
 
-  Local<String> exit_code = env->exit_code_string();
-  Local<Value> code_v;
-  int code;
-  if (!process_object->Get(context, exit_code).ToLocal(&code_v) ||
-      !code_v->Int32Value(context).To(&code) ||
-      ProcessEmit(env, "exit", Integer::New(isolate, code)).IsEmpty() ||
-      // Reload exit code, it may be changed by `emit('exit')`
-      !process_object->Get(context, exit_code).ToLocal(&code_v) ||
-      !code_v->Int32Value(context).To(&code)) {
+  const std::optional<int32_t>& maybe_exit_code = env->exit_code();
+
+  Local<Value> exit_code =
+      v8::Integer::New(isolate, maybe_exit_code.value_or(0));
+  if (ProcessEmit(env, "exit", exit_code).IsEmpty()) {
     return Nothing<int>();
   }
-
-  return Just(code);
+  // Reload exit code, it may be changed by `emit('exit')`
+  return Just(maybe_exit_code.value_or(0));
 }
 
 typedef void (*CleanupHook)(void* arg);

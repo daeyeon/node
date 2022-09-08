@@ -115,7 +115,6 @@
   V(errno_string, "errno")                                                     \
   V(error_string, "error")                                                     \
   V(exchange_string, "exchange")                                               \
-  V(exit_code_string, "exitCode")                                              \
   V(expire_string, "expire")                                                   \
   V(exponent_string, "exponent")                                               \
   V(exports_string, "exports")                                                 \

@@ -53,6 +53,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <set>
 #include <string>
@@ -743,6 +744,8 @@ class Environment : public MemoryRetainer {
   // exiting.
   inline void set_exiting(bool value);
   inline AliasedUint32Array& exiting();
+  inline void set_exit_code(const std::optional<int32_t> value);
+  inline const std::optional<int32_t>& exit_code() const;
 
   // This stores whether the --abort-on-uncaught-exception flag was passed
   // to Node.
@@ -1112,6 +1115,7 @@ class Environment : public MemoryRetainer {
   uint32_t function_id_counter_ = 0;
 
   AliasedUint32Array exiting_;
+  std::optional<int32_t> exit_code_;
 
   AliasedUint32Array should_abort_on_uncaught_toggle_;
   int should_not_abort_scope_counter_ = 0;
