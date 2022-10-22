@@ -371,6 +371,22 @@ inline AliasedUint32Array& Environment::exiting() {
   return exiting_;
 }
 
+// inline void Environment::set_exitCode(const int32_t value) {
+//   exitCode_[0] = value;
+// }
+
+// inline AliasedInt32Array& Environment::exitCode() {
+//   return exitCode_;
+// }
+
+inline void Environment::set_exit_code(const std::optional<int32_t> value) {
+  exit_code_ = value;
+}
+
+inline const std::optional<int32_t>& Environment::exit_code() const {
+  return exit_code_;
+}
+
 inline void Environment::set_abort_on_uncaught_exception(bool value) {
   options_->abort_on_uncaught_exception = value;
 }

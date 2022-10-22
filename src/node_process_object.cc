@@ -14,6 +14,8 @@
 namespace node {
 using v8::Context;
 using v8::DEFAULT;
+using v8::DontDelete;
+using v8::DontEnum;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -26,6 +28,7 @@ using v8::Name;
 using v8::NewStringType;
 using v8::None;
 using v8::Object;
+using v8::PropertyAttribute;
 using v8::PropertyCallbackInfo;
 using v8::SideEffectType;
 using v8::String;
@@ -73,6 +76,28 @@ static void DebugPortSetter(Local<Name> property,
   host_port->set_port(static_cast<int>(port));
 }
 
+static void ExitCodeGetter(Local<Name> property,
+                           const PropertyCallbackInfo<Value>& info) {
+  Environment* env = Environment::GetCurrent(info);
+  // printf("ExitCodeGetter\n");
+  std::optional<int32_t> maybe_code = env->exit_code();
+  if (maybe_code) {
+    info.GetReturnValue().Set(*maybe_code);
+  }
+}
+
+static void ExitCodeSetter(Local<Name> property,
+                           Local<Value> value,
+                           const PropertyCallbackInfo<void>& info) {
+  Environment* env = Environment::GetCurrent(info);
+  // printf("ExitCodeSetter\n");
+  if (value->IsNullOrUndefined()) {
+    return env->set_exit_code(std::nullopt);
+  }
+  // TODO: value should be As<Int>
+  env->set_exit_code(value->Int32Value(env->context()).FromMaybe(0));
+}
+
 static void GetParentProcessId(Local<Name> property,
                                const PropertyCallbackInfo<Value>& info) {
   info.GetReturnValue().Set(uv_os_getppid());
@@ -100,6 +125,15 @@ MaybeLocal<Object> CreateProcessObject(Realm* realm) {
           .IsNothing()) {
     return {};
   }
+
+  // process[exitCode_aliased_Int32Array]
+  // if (process
+  //         ->SetPrivate(context,
+  //                      realm->env()->exitCode_aliased_Int32Array(),
+  //                      realm->env()->exitCode().GetJSArray())
+  //         .IsNothing()) {
+  //   return {};
+  // }
 
   // process.version
   READONLY_PROPERTY(
@@ -208,6 +242,17 @@ void PatchProcessObject(const FunctionCallbackInfo<Value>& args) {
                 .ToLocalChecked())
       .Check();
 
+  // process[exit_code_symbol]
+  CHECK(process
+            ->SetAccessor(context,
+                          env->exit_code_symbol(),
+                          ExitCodeGetter,
+                          ExitCodeSetter,
+                          Local<Value>(),
+                          DEFAULT,
+                          static_cast<PropertyAttribute>(DontDelete | DontEnum))
+            .FromJust());
+
   // process.debugPort
   CHECK(process
             ->SetAccessor(context,
@@ -223,6 +268,8 @@ void RegisterProcessExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetParentProcessId);
   registry->Register(DebugPortSetter);
   registry->Register(DebugPortGetter);
+  registry->Register(ExitCodeSetter);
+  registry->Register(ExitCodeGetter);
   registry->Register(ProcessTitleSetter);
   registry->Register(ProcessTitleGetter);
 }
