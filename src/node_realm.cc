@@ -335,6 +335,7 @@ MaybeLocal<Value> PrincipalRealm::BootstrapRealm() {
   Local<String> env_string = FIXED_ONE_BYTE_STRING(isolate_, "env");
   Local<Object> env_proxy;
   CreateEnvProxyTemplate(isolate_, env_->isolate_data());
+
   if (!env_->env_proxy_template()->NewInstance(context()).ToLocal(&env_proxy) ||
       process_object()->Set(context(), env_string, env_proxy).IsNothing()) {
     return MaybeLocal<Value>();

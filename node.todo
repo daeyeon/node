@@ -1,0 +1,47 @@
+Projects:
+  ☐ Byte stream support for FileHandle::readableWebStream
+    https://github.com/nodejs/node/issues/45853
+
+  ☐ stream 내에서 highWaterMark 작동 원리
+  ☐ stream 내에서 byte 스트림을 구별해 낼수 있나
+  ☐ byte stream이면 어떻게 버퍼를 만들어야하나
+    - byob
+    - enqueue
+    - new
+
+  ☐ Streams
+    ☐ toWeb for byteStream
+    . lib/internal/streams/readable.js
+    . lib/internal/webstreams/adapters.js newReadableStreamFromStreamReadable
+
+    . lib/fs.js
+    . test/fixtures/wpt/streams/readable-byte-streams/general.any.js
+
+      objectMode - CountQueuingStrategy
+      readable - pause(), onData
+```
+function onData(chunk) {
+  // Copy the Buffer to detach it from the pool.
+  if (Buffer.isBuffer(chunk) && !objectMode)
+    chunk = new Uint8Array(chunk);
+
+  // 넣어주다가
+  controller.enqueue(chunk);
+
+  // watermark에 닿으면 pause
+  if (controller.desiredSize <= 0)
+    streamReadable.pause();
+}
+```
+
+  ☐ Web streams
+    ☐ Performance
+      https://github.com/nodejs/node/pull/45876
+    ☐ 생성 객체 validation
+
+
+  ☐ Research
+    ☐ web streams adapter
+      https://github.com/MattiasBuelens/web-streams-adapter
+
+  ☐ TRACE사용법

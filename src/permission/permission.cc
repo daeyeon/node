@@ -34,7 +34,7 @@ static void Has(const FunctionCallbackInfo<Value>& args) {
 
   String::Utf8Value utf8_deny_scope(isolate, args[0]);
   if (*utf8_deny_scope == nullptr) {
-    return;
+    return;  // TODO?
   }
 
   const std::string deny_scope = *utf8_deny_scope;
@@ -46,7 +46,7 @@ static void Has(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() > 1 && !args[1]->IsUndefined()) {
     String::Utf8Value utf8_arg(isolate, args[1]);
     if (*utf8_arg == nullptr) {
-      return;
+      return; // TODO?
     }
     return args.GetReturnValue().Set(
         env->permission()->is_granted(scope, *utf8_arg));
@@ -79,6 +79,10 @@ Permission::Permission() : enabled_(false) {
       std::make_shared<ChildProcessPermission>();
   std::shared_ptr<PermissionBase> worker_t =
       std::make_shared<WorkerPermission>();
+  // TODO: Add permissionScope string into each permission
+  std::shared_ptr<PermissionBase> env_permission =
+      std::make_shared<EnvPermission>();
+
 #define V(Name, _, __)                                                         \
   nodes_.insert(std::make_pair(PermissionScope::k##Name, fs));
   FILESYSTEM_PERMISSIONS(V)
@@ -90,6 +94,10 @@ Permission::Permission() : enabled_(false) {
 #define V(Name, _, __)                                                         \
   nodes_.insert(std::make_pair(PermissionScope::k##Name, worker_t));
   WORKER_THREADS_PERMISSIONS(V)
+#undef V
+#define V(Name, _, __)                                                         \
+  nodes_.insert(std::make_pair(PermissionScope::k##Name, env_permission));
+  ENVIRONMENT_INFO_PERMISSIONS(V)
 #undef V
 }
 
