@@ -9,6 +9,7 @@
 #include "permission/fs_permission.h"
 #include "permission/permission_base.h"
 #include "permission/worker_permission.h"
+#include "permission/env_permission.h" // TODO: move somewhere
 #include "v8.h"
 
 #include <string_view>
