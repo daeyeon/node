@@ -141,7 +141,25 @@ Error: Access to this API has been restricted
 }
 ```
 
-### `--allow-env`
+### `--allow-env-name=<variable-name>[,<variable-name>]...]`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+> Stability: 1 - Experimental
+
+When using the [Permission Model][], access to the environment variables via
+`process.env` is denied by default. Attempts to do so will throw an
+`ERR_ACCESS_DENIED`. Users can explicitly configure permissions by passing the
+`--allow-env-name` flag when starting Node.js.
+
+The valid arguments for the `--allow-env-name` flag are:
+
+* Strings delimited by comma (`,`) - Used to allow access to specified
+  environment variables.
+
+### `--allow-env[=<variable-name>[,<variable-name>]...]`
 
 <!-- YAML
 added: REPLACEME
@@ -156,19 +174,17 @@ When using the [Permission Model][], access to the environment variables via
 
 The valid arguments for the `--allow-env` flag are:
 
-* Strings delimited by comma (`,`).
-* `*` - Used as a wildcard.
-* `-` - Used to deny access. By prefixing environment variables with `-`, you
-  can restrict access to them. It's worth noting that denied permissions always
-  take precedence over allowed permissions, regardless of the input order.
+* Empty - Used to allow access to all environment variables.
+* Strings delimited by comma (`,`) - Used to allow access to specified
+  environment variables.
 
-See the [Environment Permissions][] documentation for more details.
+Examples can be found in the [Environment Permissions][] documentation.
 
 Example:
 
 ```js
 // Attempt to bypass the permission
-process.env.SECRET;
+process.env.PORT;
 ```
 
 ```console
@@ -187,14 +203,14 @@ Error: Access to this API has been restricted
     at node:internal/main/run_main_module:23:47 {
   code: 'ERR_ACCESS_DENIED',
   permission: 'Environment',
-  resource: 'SECRET'
+  resource: 'PORT'
 }
 ```
 
-The process needs to have access to the `SECRET` in the environment variables:
+The process needs to have access to the `PORT` in the environment variables:
 
 ```console
-$ node --experimental-permission --allow-fs-read=* --allow-env=SECRET index.js
+$ node --experimental-permission --allow-fs-read=* --allow-env=PORT index.js
 ```
 
 ### `--allow-fs-read`
@@ -2157,6 +2173,7 @@ Node.js options that are allowed are:
 <!-- node-options-node start -->
 
 * `--allow-child-process`
+* `--allow-env-name`
 * `--allow-env`
 * `--allow-fs-read`
 * `--allow-fs-write`
