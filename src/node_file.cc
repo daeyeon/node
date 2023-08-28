@@ -1965,6 +1965,200 @@ static inline Maybe<void> CheckOpenPermissions(Environment* env,
   return JustVoid();
 }
 
+// class ThreadPoolWork {
+//  public:
+//   explicit inline ThreadPoolWork(Environment* env, const char* type)
+//       : env_(env), type_(type) {
+//     CHECK_NOT_NULL(env);
+//   }
+//   inline virtual ~ThreadPoolWork() = default;
+
+//   inline void ScheduleWork();
+//   inline int CancelWork();
+
+//   virtual void DoThreadPoolWork() = 0;
+//   virtual void AfterThreadPoolWork(int status) = 0;
+
+//   Environment* env() const { return env_; }
+
+//  private:
+//   Environment* env_;
+//   uv_work_t work_req_;
+//   const char* type_;
+// };
+
+class ReadFileWork : public ThreadPoolWork {
+ public:
+  ReadFileWork(Environment* env, const char* type) : ThreadPoolWork(env, type) {
+    //
+  }
+  void DoThreadPoolWork() override {
+    //
+  }
+  void AfterThreadPoolWork(int status) override {
+    // Callback passed to uv_queue_work() which will be called on the loop
+    // thread after the work on the threadpool has been completed. If the
+    // work was cancelled using uv_cancel() status will be UV_ECANCELED.
+    // args.GetReturnValue().Set(
+    //     String::NewFromUtf8(env->isolate(),
+    //                         result.data(),
+    //                         v8::NewStringType::kNormal,
+    //                         result.size())
+    //         .ToLocalChecked());
+
+    // if (fd == nullptr) return;
+    //   req_wrap->Resolve(fd->object());
+    //
+    // AfterEnd__
+    //
+    //   FSReqBase* req_wrap = FSReqBase::from_req(req);
+    //   FSReqAfterScope after(req_wrap, req);
+    //   FS_ASYNC_TRACE_END1(
+    //       req->fs_type, req_wrap, "result", static_cast<int>(req->result))
+    //   int result = static_cast<int>(req->result);
+    //   if (result >= 0 && req_wrap->is_plain_open())
+    //     req_wrap->env()->AddUnmanagedFd(result);
+
+    //   if (after.Proceed())
+    //     req_wrap->Resolve(Integer::New(req_wrap->env()->isolate(), result));
+  }
+};
+
+static void ReadFile(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  auto isolate = env->isolate();
+  CHECK_GE(args.Length(), 2);
+
+  BufferValue path(isolate, args[0]);
+  CHECK_NOT_NULL(*path);
+  CHECK(args[1]->IsInt32());
+  const int flags = args[1].As<Int32>()->Value();
+
+  if (CheckOpenPermissions(env, path, flags).IsNothing()) {
+    return;
+  }
+
+  // TRACE_EVENT_NESTABLE_ASYNC_BEGIN0(
+  // TRACING_CATEGORY_NODE2(threadpoolwork, async), type_, this);
+
+  // 뭐든 여기에 홀드 해야함. JS에서 연결된 부분
+  FSReqBase* req_wrap_async = GetReqWrap(args, 3);
+
+  req_wrap_async->set_use_work_req(true);
+  // AsyncCall(env, req_wrap_async, args, "open", UTF8, AfterInteger,
+  //           uv_fs_open, *path, flags, mode);
+
+  // return AsyncDestCall(env, req_wrap, args,
+  //                      syscall, nullptr, 0, enc,
+  //                      after, fn, fn_args...);
+
+  req_wrap_async->Init(nullptr, nullptr, 0, UTF8); // TODO: override
+
+  int err = req_wrap->Dispatch(fn, fn_args..., after);
+
+  // Thread를 생성해 띄운다.
+  // 그걸 req_wrap_async 에 붙인다.
+  // 종료할땐 지운다.
+  // AsyncCompositionCall
+  /*
+  AsyncCall(env, req_wrap_async, args, "open", UTF8, AfterInteger,
+            uv_fs_open, *path, flags, mode);
+
+  CHECK_NOT_NULL(req_wrap);
+  req_wrap->Init(syscall, dest, len, enc);
+  int err = req_wrap->Dispatch(fn, fn_args..., after);
+  if (err < 0) {
+    uv_fs_t* uv_req = req_wrap->req();
+    uv_req->result = err;
+    uv_req->path = nullptr;
+    after(uv_req);  // after may delete req_wrap if there is an error
+    req_wrap = nullptr;
+  } else {
+    req_wrap->SetReturnValue(args);
+  }
+  return req_wrap;
+  */
+
+  // uv_work_t work_req_;
+  // AsyncCall(env, req_wrap_async, args, nullptr, UTF8, AfterInteger,
+  //           uv_fs_read, fd, &uvbuf, 1, pos);
+  //
+  // int err = req_wrap->Dispatch(fn, fn_args..., after);
+  int status = uv_queue_work(
+      env->event_loop(),
+      &work_req_,
+      [](uv_work_t* req) {
+        // Open the file
+        if (uv_fs_open(loop, &open_req, file_path, O_RDONLY, 0, NULL) < 0) {
+          // fprintf(stderr,
+          //         "Error opening file: %s\n",
+          //         uv_strerror(uv_last_error(loop)));
+          return 1;
+        }
+
+        uv_file file = open_req.result;
+
+        // Get file stat
+        if (uv_fs_stat(loop, &stat_req, file_path, NULL) < 0) {
+          // fprintf(stderr,
+          //         "Error getting file stat: %s\n",
+          //         uv_strerror(uv_last_error(loop)));
+          uv_fs_req_cleanup(&open_req);
+          return 1;
+        }
+
+        off_t file_size = stat_req.statbuf.st_size;
+        char* buffer = (char*)malloc(file_size);
+        uv_buf_t iov = uv_buf_init(buffer, file_size);
+
+        // Read the file
+        if (uv_fs_read(loop, &read_req, file, &iov, 1, -1, NULL) < 0) {
+          // fprintf(stderr,
+          //         "Error reading file: %s\n",
+          //         uv_strerror(uv_last_error(loop)));
+          uv_fs_req_cleanup(&stat_req);
+          uv_fs_req_cleanup(&open_req);
+          free(buffer);
+          return 1;
+        }
+
+        // Clean up requests and loop
+        uv_fs_req_cleanup(&read_req);
+        uv_fs_req_cleanup(&stat_req);
+        uv_fs_req_cleanup(&open_req);
+        uv_run(loop, UV_RUN_DEFAULT);
+        free(buffer);
+      },
+      [](uv_work_t* req, int status) {
+        //
+      });
+
+  // int err = req_wrap->Dispatch(fn, fn_args..., after);
+  if (status < 0) {
+    uv_fs_t* uv_req = req_wrap->req();
+    uv_req->result = err;
+    uv_req->path = nullptr;
+    // AfterEnd__(uv_req);  // after may delete req_wrap if there is an error
+    // req_wrap->SetReturnValue(args);
+    {
+      // AfterInteger
+      FSReqBase* req_wrap = FSReqBase::from_req(req);
+      FSReqAfterScope after(req_wrap, req);
+      FS_ASYNC_TRACE_END1(
+          req->fs_type, req_wrap, "result", static_cast<int>(req->result))
+      int result = static_cast<int>(req->result);
+      if (result >= 0 && req_wrap->is_plain_open())
+        req_wrap->env()->AddUnmanagedFd(result);
+
+      if (after.Proceed())
+        req_wrap->Resolve(Integer::New(req_wrap->env()->isolate(), result));
+    }
+    req_wrap = nullptr;
+  } else {
+    req_wrap->SetReturnValue(args);
+  }
+}
+
 static void ReadFileSync(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   auto isolate = env->isolate();
@@ -3189,6 +3383,7 @@ static void CreatePerIsolateProperties(IsolateData* isolate_data,
   SetMethod(isolate, target, "stat", Stat);
   SetMethod(isolate, target, "lstat", LStat);
   SetMethod(isolate, target, "fstat", FStat);
+  SetMethod(isolate, target, "readFile", ReadFile);
   SetMethodNoSideEffect(isolate, target, "readFileSync", ReadFileSync);
   SetMethod(isolate, target, "statfs", StatFs);
   SetMethod(isolate, target, "link", Link);
@@ -3307,6 +3502,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Stat);
   registry->Register(LStat);
   registry->Register(FStat);
+  registry->Register(ReadFile);
   registry->Register(ReadFileSync);
   registry->Register(StatFs);
   registry->Register(Link);

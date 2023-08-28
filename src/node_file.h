@@ -173,6 +173,7 @@ class FSReqBase : public ReqWrap<uv_fs_t> {
 
   void set_is_plain_open(bool value) { is_plain_open_ = value; }
   void set_with_file_types(bool value) { with_file_types_ = value; }
+  void set_use_work_req(bool value) { use_work_req_ = value; }
 
   FSContinuationData* continuation_data() const {
     return continuation_data_.get();
@@ -200,6 +201,7 @@ class FSReqBase : public ReqWrap<uv_fs_t> {
   bool is_plain_open_ = false;
   bool with_file_types_ = false;
   const char* syscall_ = nullptr;
+  bool use_work_req_ = false;
 
   BaseObjectPtr<BindingData> binding_data_;
 
