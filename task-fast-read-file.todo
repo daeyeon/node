@@ -1,0 +1,15 @@
+☐ Fast-path for Async Read File
+  ☐ Refs: https://github.com/nodejs/node/pull/48658
+  ☐ Refs: https://github.com/nodejs/node/issues/41435
+  ☐ 내용파악 lib/fs.js 의
+  readFile을 보면 readFileAfterOpen, readFileAfterStat 에 걸쳐 open, stat,
+  read의 과정을 거친다. 그런데 만약 open stat을 C++에서만 한다면 아마도 많은
+  작업을 할때는 성능이 올라갈 것이다.
+  ☐ Implementation
+    ✔ 테스트를 만든다. @done(23-08-27 12:41)
+      - 이미 benchmark/fs/readfile.js 가 있다.
+    ☐ Open과 Stat을 통합한다.
+    ☐ Open, Stat, Read를 통합한다.
+    ☐ 본래는 SRP로 만드는게 좋으나 이렇게 context를 여러번 거쳐야하는 경우는 한
+    셋으로 만드는게 도움이 될수 있다.
+    ☐ 1시간만 해보자 @started(23-08-27 12:40)

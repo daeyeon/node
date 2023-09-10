@@ -1965,6 +1965,102 @@ static inline Maybe<void> CheckOpenPermissions(Environment* env,
   return JustVoid();
 }
 
+/*
+1. 를 대체한다.
+binding.open(pathModule.toNamespacedPath(path),
+               flagsNumber,
+               0o666,
+               req);
+
+2. stat를 전달한다.
+3. 1 oncomplete 에서 readFileAfterOpen 대신, readFileAfterStat 를 이용.
+*/
+static void ReadFile(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+
+  const int argc = args.Length();
+  BufferValue path(env->isolate(), args[0]);
+  const int flags = args[1].As<Int32>()->Value();
+  const int mode = args[2].As<Int32>()->Value();
+
+  CHECK_GE(argc, 3);
+  CHECK_NOT_NULL(*path);
+  CHECK(args[1]->IsInt32());
+  CHECK(args[2]->IsInt32());
+
+  if (CheckOpenPermissions(env, path, flags).IsNothing()) {
+    return;
+  }
+
+  // Callback ---------------------------------------------------------------
+  static auto AfterInteger_ = [](uv_fs_t* req) {
+    FSReqBase* req_wrap = FSReqBase::from_req(req);
+
+    FSReqAfterScope after(req_wrap, req);
+
+    FS_ASYNC_TRACE_END1(
+        req->fs_type, req_wrap, "result", static_cast<int>(req->result));
+
+    int result = static_cast<int>(req->result);
+
+    // Error
+    if (result >= 0 && req_wrap->is_plain_open()) {
+      // 에러 값으로 전달
+      req_wrap->env()->AddUnmanagedFd(result);
+    }
+
+    // Success
+    if (after.Proceed()) {
+      // TODO: how to link request?
+      // 여기서 request를 다시하려면 js에서 전달된/ const req = new FSReqCallback();
+      // 가 필요하다. uv_async req 같은게 있나보다.
+      // TODO:
+      // 1. 테스트를 해봐야할듯 async콜을 두개 연결시킬땐 어떻게 해야하나.
+      // 2. 하나의 콜로 할수 있지 않나? FSReqCallback에 연결된 uv 핸들은?
+
+      // FS_ASYNC_TRACE_BEGIN0(UV_FS_FSTAT, req_wrap_async);
+      // AsyncCall(req_wrap->env(),
+      //           req_wrap_async,
+      //           args,
+      //           "fstat",
+      //           UTF8,
+      //           AfterStat,
+      //           uv_fs_fstat,
+      //           fd);
+
+      // 이 값이 전달 result 는 fd 이것은 open의 결과. stats 가 결과로 가야함.
+      req_wrap->Resolve(Integer::New(req_wrap->env()->isolate(), result));
+    }
+  };
+  // /Callback ---------------------------------------------------------------
+  /// 1 처음 open 콜을 FSReqWrap::New 로 생성하여 처리하고, 그 다음 콜은 req_wrap을 이용해보자
+  // FSReqWrap* req_wrap = FSReqWrap::New(env, request.As<Object>(), dest, encoding);
+
+
+
+  FSReqBase* req_wrap_async = GetReqWrap(args, 3);
+
+  if (req_wrap_async != nullptr) {  // open(path, flags, mode, req)
+    req_wrap_async->set_is_plain_open(true);
+
+    FS_ASYNC_TRACE_BEGIN1(
+        UV_FS_OPEN, req_wrap_async, "path", TRACE_STR_COPY(*path))
+
+    AsyncCall(env, req_wrap_async, args, "open", UTF8, AfterInteger,
+              uv_fs_open, *path, flags, mode);
+
+  } else {  // open(path, flags, mode, undefined, ctx)
+    CHECK_EQ(argc, 5);
+    FSReqWrapSync req_wrap_sync;
+    FS_SYNC_TRACE_BEGIN(open);
+    int result = SyncCall(env, args[4], &req_wrap_sync, "open",
+                          uv_fs_open, *path, flags, mode);
+    FS_SYNC_TRACE_END(open);
+    if (result >= 0) env->AddUnmanagedFd(result);
+    args.GetReturnValue().Set(result);
+  }
+}
+
 static void ReadFileSync(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   auto isolate = env->isolate();
@@ -3189,6 +3285,7 @@ static void CreatePerIsolateProperties(IsolateData* isolate_data,
   SetMethod(isolate, target, "stat", Stat);
   SetMethod(isolate, target, "lstat", LStat);
   SetMethod(isolate, target, "fstat", FStat);
+  SetMethodNoSideEffect(isolate, target, "readFile", ReadFile);
   SetMethodNoSideEffect(isolate, target, "readFileSync", ReadFileSync);
   SetMethod(isolate, target, "statfs", StatFs);
   SetMethod(isolate, target, "link", Link);
@@ -3307,6 +3404,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Stat);
   registry->Register(LStat);
   registry->Register(FStat);
+  registry->Register(ReadFile);
   registry->Register(ReadFileSync);
   registry->Register(StatFs);
   registry->Register(Link);
