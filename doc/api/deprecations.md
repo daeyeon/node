@@ -3217,7 +3217,8 @@ Type: End-of-Life
 
 Values other than `undefined`, `null`, integer numbers, and integer strings
 (e.g., `'1'`) are deprecated as value for the `code` parameter in
-[`process.exit()`][] and as value to assign to [`process.exitCode`][].
+[`process.exit()`][] and as value to assign to [`process.exitCode`][]. The
+coercion to `0` by `'delete process.exitCode'` is deprecated. `process.exitCode` itself cannot be configured to validate the given value.
 
 ### DEP0165: `--trace-atomics-wait`
 
