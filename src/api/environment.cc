@@ -256,11 +256,7 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
       modify_code_generation_from_strings_callback);
 
   Mutex::ScopedLock lock(node::per_process::cli_options_mutex);
-  if (per_process::cli_options->get_per_isolate_options()
-          ->get_per_env_options()
-          ->experimental_fetch) {
-    isolate->SetWasmStreamingCallback(wasm_web_api::StartStreamingCompilation);
-  }
+  isolate->SetWasmStreamingCallback(wasm_web_api::StartStreamingCompilation);
 
   if (per_process::cli_options->get_per_isolate_options()
           ->experimental_shadow_realm) {
