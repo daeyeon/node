@@ -1,0 +1,14 @@
+작업을 해봤는데, 성능 문제 때문에 진행하기 우려된다.
+
+> 왜냐하면, bootstrap 에서 proccess.env 로 접근하는 변수가 있어
+> getter 가 불리고, 여기서 validation 을 한다면 bootstrap 성능이 떨어진다.
+> 그래서 부담스럽다.
+
+그건 그렇고, 왜? enumerate 는 성능이 떨어졌나.
+
+> 그 이유는 enumerate 는 query와 늘 같이 동작한다.
+> for (let key in process.env) 는 enumerate 후 query한다.
+> Object.keys(process.env) 는 enumerate 후 내부적으로 key를 query 한다.
+
+이건은 credit을 더 쌓고 상황을 보자.
+

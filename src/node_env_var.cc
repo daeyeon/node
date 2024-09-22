@@ -39,23 +39,33 @@ using v8::Value;
 
 class RealEnvStore final : public KVStore {
  public:
-  MaybeLocal<String> Get(Isolate* isolate, Local<String> key) const override;
+  MaybeLocal<String> Get(Isolate* isolate,
+                         Local<String> key,
+                         bool should_validate = false) const override;
   std::optional<std::string> Get(const char* key) const override;
-  void Set(Isolate* isolate, Local<String> key, Local<String> value) override;
-  int32_t Query(Isolate* isolate, Local<String> key) const override;
+  Maybe<void> Set(Isolate* isolate,
+                  Local<String> key,
+                  Local<String> value,
+                  bool should_validate = false) override;
+  Maybe<int32_t> Query(Isolate* isolate, Local<String> key) const override;
   int32_t Query(const char* key) const override;
-  void Delete(Isolate* isolate, Local<String> key) override;
+  Maybe<void> Delete(Isolate* isolate, Local<String> key) override;
   Local<Array> Enumerate(Isolate* isolate) const override;
 };
 
 class MapKVStore final : public KVStore {
  public:
-  MaybeLocal<String> Get(Isolate* isolate, Local<String> key) const override;
+  MaybeLocal<String> Get(Isolate* isolate,
+                         Local<String> key,
+                         bool should_validate = false) const override;
   std::optional<std::string> Get(const char* key) const override;
-  void Set(Isolate* isolate, Local<String> key, Local<String> value) override;
-  int32_t Query(Isolate* isolate, Local<String> key) const override;
+  Maybe<void> Set(Isolate* isolate,
+                  Local<String> key,
+                  Local<String> value,
+                  bool should_validate = false) override;
+  Maybe<int32_t> Query(Isolate* isolate, Local<String> key) const override;
   int32_t Query(const char* key) const override;
-  void Delete(Isolate* isolate, Local<String> key) override;
+  Maybe<void> Delete(Isolate* isolate, Local<String> key) override;
   Local<Array> Enumerate(Isolate* isolate) const override;
 
   std::shared_ptr<KVStore> Clone(Isolate* isolate) const override;
@@ -124,9 +134,25 @@ std::optional<std::string> RealEnvStore::Get(const char* key) const {
   return std::nullopt;
 }
 
+static inline bool HasEmbeddedNull(std::string_view view) {
+  return view.find('\0') != std::string_view::npos;
+}
+
+inline void THROW_ERR_INVALID_ENV_STRING(Isolate* isolate, const char* msg) {
+  isolate->ThrowException(ERR_INVALID_ENV_STRING(
+      isolate, "%s contains invalid or unsupported characters", msg));
+}
+
 MaybeLocal<String> RealEnvStore::Get(Isolate* isolate,
-                                     Local<String> property) const {
+                                     Local<String> property,
+                                     bool should_validate) const {
   node::Utf8Value key(isolate, property);
+
+  if (should_validate && HasEmbeddedNull(key.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return MaybeLocal<String>();
+  }
+
   std::optional<std::string> value = Get(*key);
 
   if (value.has_value()) {
@@ -138,9 +164,9 @@ MaybeLocal<String> RealEnvStore::Get(Isolate* isolate,
   return MaybeLocal<String>();
 }
 
-void RealEnvStore::Set(Isolate* isolate,
-                       Local<String> property,
-                       Local<String> value) {
+Maybe<void> RealEnvStore::Set(Isolate* isolate,
+                              Local<String> property,
+                              Local<String> value, bool should_validate) {
   Mutex::ScopedLock lock(per_process::env_var_mutex);
 
   node::Utf8Value key(isolate, property);
@@ -149,8 +175,19 @@ void RealEnvStore::Set(Isolate* isolate,
 #ifdef _WIN32
   if (key.length() > 0 && key[0] == '=') return;
 #endif
+
+  if (should_validate && HasEmbeddedNull(key.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<void>();
+  }
+  if (should_validate && HasEmbeddedNull(val.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Value");
+    return Nothing<void>();
+  }
+
   uv_os_setenv(*key, *val);
   DateTimeConfigurationChangeNotification(isolate, key, *val);
+  return JustVoid();
 }
 
 int32_t RealEnvStore::Query(const char* key) const {
@@ -175,17 +212,27 @@ int32_t RealEnvStore::Query(const char* key) const {
   return 0;
 }
 
-int32_t RealEnvStore::Query(Isolate* isolate, Local<String> property) const {
+Maybe<int32_t> RealEnvStore::Query(Isolate* isolate,
+                                   Local<String> property) const {
   node::Utf8Value key(isolate, property);
-  return Query(*key);
+  if (HasEmbeddedNull(key.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<int32_t>();
+  }
+  return Just(Query(*key));
 }
 
-void RealEnvStore::Delete(Isolate* isolate, Local<String> property) {
+Maybe<void> RealEnvStore::Delete(Isolate* isolate, Local<String> property) {
   Mutex::ScopedLock lock(per_process::env_var_mutex);
 
   node::Utf8Value key(isolate, property);
+  if (HasEmbeddedNull(key.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<void>();
+  }
   uv_os_unsetenv(*key);
   DateTimeConfigurationChangeNotification(isolate, key);
+  return JustVoid();
 }
 
 Local<Array> RealEnvStore::Enumerate(Isolate* isolate) const {
@@ -224,9 +271,10 @@ std::shared_ptr<KVStore> KVStore::Clone(Isolate* isolate) const {
   for (uint32_t i = 0; i < keys_length; i++) {
     Local<Value> key = keys->Get(context, i).ToLocalChecked();
     CHECK(key->IsString());
-    copy->Set(isolate,
-              key.As<String>(),
-              Get(isolate, key.As<String>()).ToLocalChecked());
+    CHECK(copy->Set(isolate,
+                    key.As<String>(),
+                    Get(isolate, key.As<String>()).ToLocalChecked())
+              .IsJust());
   }
   return copy;
 }
@@ -237,8 +285,14 @@ std::optional<std::string> MapKVStore::Get(const char* key) const {
   return it == map_.end() ? std::nullopt : std::make_optional(it->second);
 }
 
-MaybeLocal<String> MapKVStore::Get(Isolate* isolate, Local<String> key) const {
+MaybeLocal<String> MapKVStore::Get(Isolate* isolate,
+                                   Local<String> key,
+                                   bool should_validate) const {
   Utf8Value str(isolate, key);
+  if (should_validate && HasEmbeddedNull(str.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return MaybeLocal<String>();
+  }
   std::optional<std::string> value = Get(*str);
   if (!value.has_value()) return MaybeLocal<String>();
   std::string val = value.value();
@@ -246,14 +300,28 @@ MaybeLocal<String> MapKVStore::Get(Isolate* isolate, Local<String> key) const {
       isolate, val.data(), NewStringType::kNormal, val.size());
 }
 
-void MapKVStore::Set(Isolate* isolate, Local<String> key, Local<String> value) {
+Maybe<void> MapKVStore::Set(Isolate* isolate,
+                            Local<String> key,
+                            Local<String> value,
+                            bool should_validate) {
   Mutex::ScopedLock lock(mutex_);
   Utf8Value key_str(isolate, key);
   Utf8Value value_str(isolate, value);
+
+  if (should_validate && HasEmbeddedNull(key_str.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<void>();
+  }
+  if (should_validate && HasEmbeddedNull(value_str.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Value");
+    return Nothing<void>();
+  }
+
   if (*key_str != nullptr && key_str.length() > 0 && *value_str != nullptr) {
     map_[std::string(*key_str, key_str.length())] =
         std::string(*value_str, value_str.length());
   }
+  return JustVoid();
 }
 
 int32_t MapKVStore::Query(const char* key) const {
@@ -261,15 +329,24 @@ int32_t MapKVStore::Query(const char* key) const {
   return map_.find(key) == map_.end() ? -1 : 0;
 }
 
-int32_t MapKVStore::Query(Isolate* isolate, Local<String> key) const {
+Maybe<int32_t> MapKVStore::Query(Isolate* isolate, Local<String> key) const {
   Utf8Value str(isolate, key);
-  return Query(*str);
+  if (HasEmbeddedNull(str.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<int32_t>();
+  }
+  return Just(Query(*str));
 }
 
-void MapKVStore::Delete(Isolate* isolate, Local<String> key) {
+Maybe<void> MapKVStore::Delete(Isolate* isolate, Local<String> key) {
   Mutex::ScopedLock lock(mutex_);
   Utf8Value str(isolate, key);
+  if (HasEmbeddedNull(str.ToStringView())) {
+    THROW_ERR_INVALID_ENV_STRING(isolate, "Key");
+    return Nothing<void>();
+  }
   map_.erase(std::string(*str, str.length()));
+  return JustVoid();
 }
 
 Local<Array> MapKVStore::Enumerate(Isolate* isolate) const {
@@ -313,7 +390,9 @@ Maybe<void> KVStore::AssignFromObject(Local<Context> context,
       return Nothing<void>();
     }
 
-    Set(isolate, key.As<String>(), value_string);
+    if (Set(isolate, key.As<String>(), value_string).IsNothing()) {
+      return Nothing<void>();
+    }
   }
   return JustVoid();
 }
@@ -348,7 +427,7 @@ static Intercepted EnvGetter(Local<Name> property,
   }
   CHECK(property->IsString());
   MaybeLocal<String> value_string =
-      env->env_vars()->Get(env->isolate(), property.As<String>());
+      env->env_vars()->Get(env->isolate(), property.As<String>(), true);
   if (!value_string.IsEmpty()) {
     info.GetReturnValue().Set(value_string.ToLocalChecked());
     return Intercepted::kYes;
@@ -386,7 +465,7 @@ static Intercepted EnvSetter(Local<Name> property,
     return Intercepted::kNo;
   }
 
-  env->env_vars()->Set(env->isolate(), key, value_string);
+  env->env_vars()->Set(env->isolate(), key, value_string, true);
 
   return Intercepted::kYes;
 }
@@ -396,7 +475,12 @@ static Intercepted EnvQuery(Local<Name> property,
   Environment* env = Environment::GetCurrent(info);
   CHECK(env->has_run_bootstrapping_code());
   if (property->IsString()) {
-    int32_t rc = env->env_vars()->Query(env->isolate(), property.As<String>());
+    int32_t rc;
+    if (!env->env_vars()
+             ->Query(env->isolate(), property.As<String>())
+             .To(&rc)) {
+      return Intercepted::kYes;
+    }
     if (rc != -1) {
       // Return attributes for the property.
       info.GetReturnValue().Set(v8::None);
@@ -410,8 +494,13 @@ static Intercepted EnvDeleter(Local<Name> property,
                               const PropertyCallbackInfo<Boolean>& info) {
   Environment* env = Environment::GetCurrent(info);
   CHECK(env->has_run_bootstrapping_code());
+
   if (property->IsString()) {
-    env->env_vars()->Delete(env->isolate(), property.As<String>());
+    if (env->env_vars()
+            ->Delete(env->isolate(), property.As<String>())
+            .IsNothing()) {
+      return Intercepted::kYes;
+    }
   }
 
   // process.env never has non-configurable properties, so always

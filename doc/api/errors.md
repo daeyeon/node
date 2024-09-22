@@ -1906,6 +1906,16 @@ Invalid characters were detected in headers.
 A cursor on a given stream cannot be moved to a specified row without a
 specified column.
 
+<a id="ERR_INVALID_ENV_STRING"></a>
+
+### `ERR_INVALID_ENV_STRING`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+A string used for `process.env` contains invalid characters.
+
 <a id="ERR_INVALID_FD"></a>
 
 ### `ERR_INVALID_FD`
